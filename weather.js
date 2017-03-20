@@ -1,15 +1,6 @@
 'use strict'
 const weatherKey = "573c01fdde52b7859e1a1d3a9dd2fd38";
 
-$("#go").click( (e) => {
-	getWeather();
-});
-
-$('#location').on('keypress', (e) => {
-	if(e.which === 13){
-		getWeather();
-	}
-});
 
 /*
 	This hits a weather API and shows the weather on the browser
@@ -26,42 +17,81 @@ $('#location').on('keypress', (e) => {
 
 */
 
+let weatherApp = {
+	getWeather : function(){
+		let location = $('#location').val();
+		let url = `http://api.openweathermap.org/data/2.5/weather?q=${location},us&APPID=${weatherKey}&units=imperial`;
+		let request = new Request( url , {
+			method: 'GET', 
+			mode: 'cors', 
+			headers: new Headers({
+				'Content-Type': 'text/plain'
+			})
+		});
 
-function getWeather( location ){
-	let url = `http://api.openweathermap.org/data/2.5/weather?q=${location},us&APPID=${weatherKey}&units=imperial`;
-	let request = new Request( url , {
-		method: 'GET', 
-		mode: 'cors', 
-		headers: new Headers({
-			'Content-Type': 'text/plain'
-		})
-	});
+		fetch(request).then( (response) => { 
+			return response.json();
+		}).then( (json) => {
+			this.displayWeather(json);
+			this.updateMap( json.coord.lat, json.coord.lon );
+		});
+	},
+	displayWeather : function( data ){
+		// debugger;
+		let template = `
+			<div>
+				<h2>${data.name}</h2>
+				<h3>${data.main.temp.toFixed(0)}°F</h3>
+			</div>
+			<div>
+				Description: <span>${data.weather[0].description}</span>
+			</div>
+			<div>
+				Clouds: <span>${data.clouds.all}%</span>
+			</div>
+			<div>
+				Humidity: <span>${data.main.humidity}%</span>
+			</div>
+			<div>
+				Pressure: <span>${data.main.pressure} hpa</span>
+			</div>
+			<div>
+				Wind: <span>${data.wind.speed} m/s</span>
+			</div>
+		`;
+		$('.results').html(template);
+	},
+	updateMap : function(lat,long){
+		let osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+		let osmAttribution = 'Map data © OpenStreetMap contributors, CC-BY-SA';
+		let osmLayer = new L.TileLayer(osmUrl, {maxZoom: 13, attribution: osmAttribution});
+		let map = new L.Map('mapid');
+		map.setView([lat, long], 13);
+		map.addLayer(osmLayer);
 
-	fetch(request).then( (response) => { 
-		return response.json();
-	}).then( (json) => {
-		displayWeather(json);
-	});
+		L.tileLayer('http://{s}.tile.openweathermap.org/map/temperature/{z}/{x}/{y}.png', {
+		    attribution: 'Map data © OpenWeatherMap',
+		    maxZoom: 13
+		}).addTo(map);
+
+	},
+	initMap : function(){
+		this.updateMap( 42.53,-71.76 ); //defaults to leominster
+	}
+
 }
 
-function displayWeather( data ){
-	let template = `
-		<div>
-			<h3>${data.main.temp.toFixed(0)}°F</h3>
-		</div>
-		<div>
-			Clouds: <span>${data.clouds.all}%</span>
-		</div>
-		<div>
-			humidity: <span>${data.main.humidity}%</span>
-		</div>
-		<div>
-			Pressure: <span>${data.main.pressure} hpa</span>
-		</div>
-		<div>
-			Wind: <span>${data.wind.speed} m/s</span>
-		</div>
-	`;
-	$('.results').html(template);
-}
+
+$("#go").click( (e) => {
+	weatherApp.getWeather();
+});
+
+$('#location').on('keypress', (e) => {
+	if(e.which === 13){
+		weatherApp.getWeather();
+	}
+});
+
+
+//weatherApp.initMap();
 
